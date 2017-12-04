@@ -1,3 +1,7 @@
+import time
+from copy import deepcopy
+
+
 class Cell(object):
     '''
     A cell in a cellular automaton.
@@ -14,17 +18,20 @@ class Cell(object):
         self.adjacents = []
         self.future_state = None
 
+    # Implement this separately for each class
+    # (different cell classes have different state spaces)
     def generate_random_state(self):
-        raise NotImplemented  ## Every type of cell might have different possible states, so we need to implement this separately for each class
+        raise NotImplemented
 
     '''
     The rules function takes a count of live neighbours & the current cell,
     and outputs a bit indicating liveness.
-    Note: this is intended to be overridden by a superclass!
     '''
 
+    # Implement this separately for whatever type of automata is played by
+    #   the subclass.
     def rules(self, neighbours):
-        return 0  ## Set states to 0
+        raise NotImplemented
 
     # Sets this cell adjacent to another, and the other adjacent to this (two lists!)
     # If it's already adjacent, fail silently (it's already done so no harm!)
@@ -55,7 +62,7 @@ class Cell(object):
                 live_neighbours += 1
 
         # Determine the future state based on the number of live neighbours.
-        self.future_state = self.rules(self, live_neighbours)
+        self.future_state = self.rules(live_neighbours)
 
     def tick(self):
         self.state = self.future_state
@@ -76,6 +83,15 @@ class Frame:
     '''
 
     def __init__(self, initial_state_matrix, cell_class):
+
+        # Get around problems with initial state reuse and pass-by-reference
+        initial_state_matrix = deepcopy(initial_state_matrix)
+
+        # Copy this too for the same reason
+        # (we reuse this on reset so need one more copy)
+        self.__original_initial_state = deepcopy(initial_state_matrix)
+
+        self.cell_class = cell_class
         self.frame_size = len(initial_state_matrix)
         self.structure = initial_state_matrix
         self.__convert_structure_to_automaton(cell_class)
@@ -98,7 +114,6 @@ class Frame:
                     current_cell.set_adjacent(self.structure[b][a])
 
     def __find_adjacencies(self, y, x):
-        current_cell = self.structure[y][x]
         adjacent_cells = []
         '''
         Populate adjacencies for the current cell ('c'):
@@ -143,6 +158,13 @@ class Frame:
             for cell in line:
                 cell.tick()
 
+    def pretty_print_round(self, count=1, delay=None):
+        for _ in range(count):
+            self.tick_all()
+            print str(self)
+            if delay is not None:
+                time.sleep(delay)
+
     def __str__(self):
         output = ""
         for y in range(self.frame_size):
@@ -150,3 +172,6 @@ class Frame:
                 output += str(self.structure[y][x].state)
             output += "\n"
         return output
+
+    def reset(self):
+        self.__init__(self.__original_initial_state, self.cell_class)

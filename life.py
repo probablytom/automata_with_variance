@@ -7,30 +7,8 @@ import random
 import math
 
 
-def print_output(func):
-    def __wrap(*args, **kwargs):
-        result = func(*args, **kwargs)
-        print result
-        return result
-
-    return __wrap
-
-
-def wait_after_for(time_secs):
-    def wait_after_decorator(func):
-        def __wrap(*args, **kwargs):
-            result = func(*args, **kwargs)
-            sleep(time_secs)
-            return result
-
-        return __wrap
-
-    return wait_after_decorator
-
-
 class Conway(Cell):
-
-    def rules(self, garbage, neighbours):
+    def rules(self, neighbours):
         if neighbours == 3 and self.state == 1:
             return 1
         if neighbours == 3 and self.state == 0:
@@ -43,12 +21,11 @@ class Conway(Cell):
         return int(random.choice([math.ceil, math.floor])(random.random()))
 
 
+# Fuzzing instructions
 randomly_ignore_rules = {
     Conway.rules:
     on_condition_that(lambda: random.random() > 0.95, replace_condition_with())
 }
-
-fuzz_clazz(Conway, randomly_ignore_rules)
 
 # Basic oscillator, should move between two
 #   states when there's no variance.
@@ -56,11 +33,18 @@ initial_structure = [[0, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0],
                      [0, 0, 1, 1, 0, 0], [0, 0, 1, 1, 0, 0],
                      [0, 0, 0, 1, 0, 0], [0, 0, 0, 0, 0, 0]]
 
-game_of_life = Frame(initial_structure, Conway)
+if __name__ == "__main__":
+    print "Life without variation:"
+    sleep(2)
+    unvaried_game_of_life = Frame(initial_structure, Conway)
+    unvaried_game_of_life.pretty_print_round(count=10, delay=0.5)
 
-c = 10
-while c > 0:
-    c -= 1
-    game_of_life.tick_all()
-    print str(game_of_life)
-    sleep(0.5)
+    fuzz_clazz(Conway, randomly_ignore_rules)  # Fuzz Conway's behaviour
+
+    print
+    print "=" * 25
+    print
+    print "Life with variation:"
+    sleep(2)
+    varied_game_of_life = Frame(initial_structure, Conway)
+    varied_game_of_life.pretty_print_round(count=10, delay=0.5)
